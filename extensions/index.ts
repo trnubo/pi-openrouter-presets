@@ -351,7 +351,7 @@ function buildPresetModel(
 	const model = {
 		type: "chat",
 		id: `${PRESET_PREFIX}${preset.slug}`,
-		name: baseModelId ? `${preset.name} (${baseModelId})` : preset.name,
+		name: preset.name,
 		// Presets are addressed through OpenRouter, so keep the base model's API
 		// (OpenRouter models use both `openai-completions` and `anthropic-messages`).
 		api: base?.api ?? "openai-completions",
