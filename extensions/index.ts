@@ -76,6 +76,8 @@ interface PresetVersion {
 	system_prompt?: string | null;
 	config?: {
 		model?: string;
+		/** Set instead of `model` when the preset has fallback models; primary first. */
+		models?: unknown;
 		/** Server-side provider routing the preset applies to every request. */
 		provider?: PresetProviderRouting;
 		[key: string]: unknown;
@@ -290,6 +292,18 @@ function interquartileEndpointPrices(endpoints: OpenRouterEndpoint[]): EndpointA
 	};
 }
 
+/**
+ * The preset's primary (base) model. Presets with fallback models carry a
+ * `models` array instead of `model`; OpenRouter tries them in order, so the
+ * first entry is the one that normally serves requests.
+ */
+function baseModelIdOf(detail: PresetDetail | undefined): string | undefined {
+	const config = detail?.designated_version?.config;
+	if (typeof config?.model === "string" && config.model.length > 0) return config.model;
+	if (!Array.isArray(config?.models)) return undefined;
+	return config.models.find((entry): entry is string => typeof entry === "string" && entry.length > 0);
+}
+
 /** Provider slugs a preset pins with `provider.only`, if they are plain strings. */
 function routeSlugsOf(detail: PresetDetail | undefined): string[] {
 	const only = detail?.designated_version?.config?.provider?.only;
@@ -343,7 +357,7 @@ function buildPresetModel(
 	preset: PresetSummary,
 	detail?: PresetDetail,
 ): Model<Api> {
-	const baseModelId = detail?.designated_version?.config?.model;
+	const baseModelId = baseModelIdOf(detail);
 	const base = baseModels.find(
 		(model) => (model.type ?? "chat") === "chat" && model.id === baseModelId,
 	) as Model<Api> | undefined;
@@ -377,7 +391,7 @@ function infoFromDetail(
 	modelId: string,
 	endpointsByModel?: Map<string, OpenRouterEndpoint[]>,
 ): PresetInfo {
-	const baseModelId = detail?.designated_version?.config?.model;
+	const baseModelId = baseModelIdOf(detail);
 	const routeSlugs = routeSlugsOf(detail);
 	const pinned = routeSlugs.length > 0;
 	const endpoints = baseModelId ? endpointsByModel?.get(baseModelId) : undefined;
@@ -435,7 +449,7 @@ async function loadPresets(
 	const baseIds = [
 		...new Set(
 			details
-				.map((detail) => detail?.designated_version?.config?.model)
+				.map(baseModelIdOf)
 				.filter((id): id is string => typeof id === "string" && id.length > 0),
 		),
 	];
