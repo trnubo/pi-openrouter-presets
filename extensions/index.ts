@@ -499,6 +499,9 @@ function register(models: Model<Api>[] = presetModels): void {
 					name: model.name,
 					modelId: model.id,
 				}));
+				// Re-register so a full catalog refresh (e.g. RPC mode's background
+				// refresh at startup) rebuilds this provider with the restored presets.
+				register(presetModels);
 				if (!(await context.publish({ update: () => {} }))) return toConfigs();
 			}
 
